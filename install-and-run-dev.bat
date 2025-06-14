@@ -29,5 +29,4 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo Application closed successfully.
-pause 
+echo Application closed successfully. 
