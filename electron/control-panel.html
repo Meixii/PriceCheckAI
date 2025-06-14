@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PriceCheck AI - Control Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #1a1a2e 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            color: #e0e6ed;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 30%, #0f3460 70%, #1a1a2e 100%);
+            color: #e0e6ed;
+            padding: 30px 20px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(100, 181, 246, 0.1), transparent);
+            animation: shimmer 3s infinite;
+        }
+
+        .header h1 {
+            font-size: 36px;
+            margin-bottom: 8px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #64b5f6 0%, #42a5f5 50%, #90caf9 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            position: relative;
+            z-index: 1;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 18px;
+            font-weight: 300;
+            position: relative;
+            z-index: 1;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 25px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+        }
+
+        .panel {
+            background: linear-gradient(145deg, #2d2d30 0%, #252529 50%, #2d2d30 100%);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 
+                0 10px 30px rgba(0, 0, 0, 0.5),
+                0 1px 8px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(100, 181, 246, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #64b5f6, #42a5f5, #90caf9);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .panel:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.6),
+                0 2px 12px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+            border-color: rgba(100, 181, 246, 0.4);
+        }
+
+        .panel:hover::before {
+            opacity: 1;
+        }
+
+        .panel h2 {
+            color: #64b5f6;
+            margin-bottom: 25px;
+            font-size: 24px;
+            font-weight: 600;
+            border-bottom: 2px solid rgba(100, 181, 246, 0.3);
+            padding-bottom: 12px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .panel h2::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, rgba(100, 181, 246, 0.3), transparent);
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .button-group-main {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .button-group-main .tooltip {
+            display: flex;
+        }
+
+        .button-group-main .btn {
+            width: 100%;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .button-group-service {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .button-group-service .tooltip {
+            display: flex;
+        }
+
+        .button-group-service .btn {
+            width: 100%;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .button-group-logs {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+
+        .button-group-logs .tooltip {
+            display: flex;
+        }
+
+        .button-group-logs .btn {
+            width: 100%;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+        }
+
+        .button-group-pharmacy {
+            margin: 25px 0;
+        }
+
+        .button-group-pharmacy .tooltip {
+            display: flex;
+        }
+
+        .button-group-pharmacy .btn {
+            width: 100%;
+            height: 55px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .button-open-app {
+            margin-top: 25px;
+        }
+
+        .button-open-app .tooltip {
+            display: flex;
+        }
+
+        .button-open-app .btn {
+            width: 100%;
+            height: 55px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        /* Base Button Styles */
+        .btn {
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            text-transform: none;
+            letter-spacing: 0.3px;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border: 2px solid transparent;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+            transition: left 0.4s ease;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        /* PRIMARY BUTTONS - Most Important Actions */
+        .btn-primary {
+            background: linear-gradient(135deg, #5a9fd4 0%, #3b82c7 100%);
+            color: #ffffff;
+            border-color: #5a9fd4;
+            font-weight: 600;
+            font-size: 15px;
+            padding: 14px 24px;
+            box-shadow: 0 3px 12px rgba(90, 159, 212, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(90, 159, 212, 0.4);
+            background: linear-gradient(135deg, #3b82c7 0%, #2563a7 100%);
+        }
+
+        /* SECONDARY BUTTONS - Standard Actions (Outlined) */
+        .btn-secondary {
+            background: transparent;
+            color: #5a9fd4;
+            border-color: #5a9fd4;
+            font-weight: 500;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(90, 159, 212, 0.1);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(90, 159, 212, 0.2);
+        }
+
+        /* SUCCESS BUTTONS */
+        .btn-success {
+            background: linear-gradient(135deg, #4a9b4f 0%, #3d7c42 100%);
+            color: #ffffff;
+            border-color: #4a9b4f;
+            box-shadow: 0 3px 12px rgba(74, 155, 79, 0.3);
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(74, 155, 79, 0.4);
+            background: linear-gradient(135deg, #3d7c42 0%, #2d5a30 100%);
+        }
+
+        .btn-success-outline {
+            background: transparent;
+            color: #4a9b4f;
+            border-color: #4a9b4f;
+        }
+
+        .btn-success-outline:hover {
+            background: rgba(74, 155, 79, 0.1);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(74, 155, 79, 0.2);
+        }
+
+        /* WARNING BUTTONS */
+        .btn-warning {
+            background: linear-gradient(135deg, #d4851f 0%, #b8721a 100%);
+            color: #ffffff;
+            border-color: #d4851f;
+            box-shadow: 0 3px 12px rgba(212, 133, 31, 0.3);
+        }
+
+        .btn-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(212, 133, 31, 0.4);
+            background: linear-gradient(135deg, #b8721a 0%, #9c5f15 100%);
+        }
+
+        .btn-warning-outline {
+            background: transparent;
+            color: #d4851f;
+            border-color: #d4851f;
+        }
+
+        .btn-warning-outline:hover {
+            background: rgba(212, 133, 31, 0.1);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(212, 133, 31, 0.2);
+        }
+
+        /* DANGER BUTTONS */
+        .btn-danger {
+            background: linear-gradient(135deg, #d14343 0%, #b83838 100%);
+            color: #ffffff;
+            border-color: #d14343;
+            box-shadow: 0 3px 12px rgba(209, 67, 67, 0.3);
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(209, 67, 67, 0.4);
+            background: linear-gradient(135deg, #b83838 0%, #9c2e2e 100%);
+        }
+
+        .btn-danger-outline {
+            background: transparent;
+            color: #d14343;
+            border-color: #d14343;
+        }
+
+        .btn-danger-outline:hover {
+            background: rgba(209, 67, 67, 0.1);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(209, 67, 67, 0.2);
+        }
+
+        /* INFO BUTTONS */
+        .btn-info {
+            background: linear-gradient(135deg, #1f9fb8 0%, #1a8aa0 100%);
+            color: #ffffff;
+            border-color: #1f9fb8;
+            box-shadow: 0 3px 12px rgba(31, 159, 184, 0.3);
+        }
+
+        .btn-info:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(31, 159, 184, 0.4);
+            background: linear-gradient(135deg, #1a8aa0 0%, #157580 100%);
+        }
+
+        /* TERTIARY BUTTONS - Utility Actions (Subtle) */
+        .btn-tertiary {
+            background: transparent;
+            color: #9ca3af;
+            border-color: #4b5563;
+            font-weight: 400;
+            padding: 10px 16px;
+            font-size: 13px;
+        }
+
+        .btn-tertiary:hover {
+            background: rgba(75, 85, 99, 0.1);
+            color: #d1d5db;
+            border-color: #6b7280;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        /* SPECIAL BUTTONS */
+        .btn-special {
+            background: linear-gradient(135deg, #8b5a9b 0%, #7a4d87 100%);
+            color: #ffffff;
+            border-color: #8b5a9b;
+            box-shadow: 0 3px 12px rgba(139, 90, 155, 0.3);
+        }
+
+        .btn-special:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(139, 90, 155, 0.4);
+            background: linear-gradient(135deg, #7a4d87 0%, #694073 100%);
+        }
+
+        .status-grid {
+            display: grid;
+            gap: 10px;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: linear-gradient(135deg, #3e3e42 0%, #353539 50%, #3e3e42 100%);
+            border-radius: 12px;
+            border-left: 4px solid #64b5f6;
+            box-shadow: 
+                0 4px 12px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .status-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(100, 181, 246, 0.05) 0%, transparent 50%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .status-item:hover {
+            transform: translateX(4px);
+            box-shadow: 
+                0 6px 20px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        }
+
+        .status-item:hover::before {
+            opacity: 1;
+        }
+
+        .status-online {
+            border-left-color: #4caf50;
+            background: linear-gradient(135deg, #2d4a2d 0%, #3e3e42 50%, #2d4a2d 100%);
+        }
+
+        .status-offline {
+            border-left-color: #f44336;
+            background: linear-gradient(135deg, #4a2d2d 0%, #3e3e42 50%, #4a2d2d 100%);
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-online {
+            background: #1b5e20;
+            color: #a5d6a7;
+        }
+
+        .badge-offline {
+            background: #b71c1c;
+            color: #ffcdd2;
+        }
+
+        .logs-container {
+            grid-column: 1 / -1;
+        }
+
+        .logs-output {
+            background: linear-gradient(145deg, #1a1a1a 0%, #1e1e1e 50%, #1a1a1a 100%);
+            color: #e0e6ed;
+            padding: 24px;
+            border-radius: 12px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            height: 320px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin-bottom: 20px;
+            border: 1px solid rgba(100, 181, 246, 0.2);
+            box-shadow: 
+                inset 0 2px 8px rgba(0, 0, 0, 0.4),
+                0 1px 0 rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
+
+        .logs-output::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(100, 181, 246, 0.3), transparent);
+        }
+
+        .logs-output::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .logs-output::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        .logs-output::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #64b5f6, #42a5f5);
+            border-radius: 4px;
+        }
+
+        .logs-output::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #42a5f5, #64b5f6);
+        }
+
+        .footer {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 30%, #0f3460 70%, #1a1a2e 100%);
+            color: #e0e6ed;
+            text-align: center;
+            padding: 30px 20px;
+            margin-top: 50px;
+            border-top: 1px solid rgba(100, 181, 246, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .footer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #64b5f6, #42a5f5, #90caf9, #64b5f6);
+            background-size: 200% 100%;
+            animation: gradientShift 3s ease-in-out infinite;
+        }
+
+        .footer h3 {
+            margin-bottom: 15px;
+            color: #64b5f6;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .footer p {
+            opacity: 0.9;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .footer p:last-child {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 15px;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        /* Tutorial Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-content {
+            background: linear-gradient(145deg, #2d2d30 0%, #252529 50%, #2d2d30 100%);
+            margin: 3% auto;
+            padding: 40px;
+            border-radius: 20px;
+            width: 85%;
+            max-width: 700px;
+            max-height: 85vh;
+            overflow-y: auto;
+            position: relative;
+            animation: slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(100, 181, 246, 0.3);
+            box-shadow: 
+                0 20px 60px rgba(0, 0, 0, 0.6),
+                0 8px 30px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+        }
+
+        .modal-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #64b5f6, #42a5f5, #90caf9, #64b5f6);
+            border-radius: 20px 20px 0 0;
+        }
+
+        .close {
+            color: #888;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            position: absolute;
+            right: 20px;
+            top: 15px;
+        }
+
+        .close:hover {
+            color: #e0e6ed;
+        }
+
+        .tutorial-step {
+            margin-bottom: 30px;
+            padding: 25px;
+            background: linear-gradient(135deg, #3e3e42 0%, #353539 50%, #3e3e42 100%);
+            border-radius: 12px;
+            border-left: 4px solid #64b5f6;
+            box-shadow: 
+                0 4px 12px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tutorial-step::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(100, 181, 246, 0.05) 0%, transparent 50%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .tutorial-step:hover {
+            transform: translateX(4px);
+            box-shadow: 
+                0 6px 20px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        }
+
+        .tutorial-step:hover::before {
+            opacity: 1;
+        }
+
+        .tutorial-step h3 {
+            color: #64b5f6;
+            margin-bottom: 12px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .checkbox-container {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(100, 181, 246, 0.3);
+            border-top: 2px solid #64b5f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        /* Service Status Styles */
+        .service-status-grid {
+            display: grid;
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+
+        .service-status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px;
+            background: linear-gradient(135deg, #3e3e42 0%, #353539 50%, #3e3e42 100%);
+            border-radius: 12px;
+            border-left: 4px solid #64b5f6;
+            box-shadow: 
+                0 4px 12px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .service-status-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(100, 181, 246, 0.05) 0%, transparent 50%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .service-status-item:hover {
+            transform: translateX(4px);
+            box-shadow: 
+                0 6px 20px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        }
+
+        .service-status-item:hover::before {
+            opacity: 1;
+        }
+
+        .service-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .service-name {
+            font-weight: 600;
+            color: #e0e6ed;
+            font-size: 14px;
+        }
+
+        .service-port {
+            font-size: 12px;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        .service-status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        /* Status States */
+        .status-stopped {
+            background: #424242;
+            color: #bdbdbd;
+        }
+
+        .status-stopped .status-dot {
+            background: #757575;
+        }
+
+        .status-starting {
+            background: #1a237e;
+            color: #9fa8da;
+        }
+
+        .status-starting .status-dot {
+            background: #3f51b5;
+        }
+
+        .status-running {
+            background: #1b5e20;
+            color: #a5d6a7;
+        }
+
+        .status-running .status-dot {
+            background: #4caf50;
+        }
+
+        .status-error {
+            background: #b71c1c;
+            color: #ffcdd2;
+        }
+
+        .status-error .status-dot {
+            background: #f44336;
+        }
+
+        /* Disabled Button Styles */
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .btn:disabled:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Tooltip Styles */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: #1a1a2e;
+            color: #e0e6ed;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1000;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+            border: 1px solid #3e3e42;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #1a1a2e transparent transparent transparent;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .pharmacy-note {
+            background: #2d4a22;
+            border: 1px solid #4caf50;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            color: #a5d6a7;
+            font-size: 13px;
+        }
+
+        .pharmacy-note strong {
+            color: #4caf50;
+        }
+
+
+
+        /* Loading animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .container {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .panel:nth-child(1) {
+            animation: fadeInUp 0.6s ease-out 0.1s both;
+        }
+
+        .panel:nth-child(2) {
+            animation: fadeInUp 0.6s ease-out 0.2s both;
+        }
+
+        .panel:nth-child(3) {
+            animation: fadeInUp 0.6s ease-out 0.3s both;
+        }
+
+        /* Enhanced spinner */
+        .spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(100, 181, 246, 0.2);
+            border-top: 2px solid #64b5f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+            box-shadow: 0 0 10px rgba(100, 181, 246, 0.3);
+        }
+
+        /* Glowing effect for active elements */
+        .status-running .status-dot {
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.6);
+        }
+
+        .status-starting .status-dot {
+            box-shadow: 0 0 10px rgba(63, 81, 181, 0.6);
+        }
+
+        .status-error .status-dot {
+            box-shadow: 0 0 10px rgba(244, 67, 54, 0.6);
+        }
+
+        /* Subtle background pattern */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(circle at 25% 25%, rgba(100, 181, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 75% 75%, rgba(66, 165, 245, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>PriceCheck AI Control Panel</h1>
+        <p>Manage your medicine price checker application</p>
+    </div>
+
+    <div class="container">
+        <!-- Service Controls -->
+        <div class="panel">
+            <h2>🚀 Service Controls</h2>
+            
+            <!-- Service Status Display -->
+            <div class="service-status-grid">
+                <div class="service-status-item">
+                    <div class="service-info">
+                        <span class="service-name">Backend Server</span>
+                        <span class="service-port">Port 3000</span>
+                    </div>
+                    <span class="service-status-badge" id="backend-status">
+                        <span class="status-dot" id="backend-dot"></span>
+                        <span id="backend-status-text">Stopped</span>
+                    </span>
+                </div>
+                <div class="service-status-item">
+                    <div class="service-info">
+                        <span class="service-name">Frontend Server</span>
+                        <span class="service-port">Port 5173</span>
+                    </div>
+                    <span class="service-status-badge" id="frontend-status">
+                        <span class="status-dot" id="frontend-dot"></span>
+                        <span id="frontend-status-text">Stopped</span>
+                    </span>
+                </div>
+            </div>
+            <h3 style="margin-top: 30px; color: #64b5f6; font-size: 18px;">All Services Controls</h3>
+            <div class="button-group-main">
+                <div class="tooltip">
+                    <button class="btn btn-success" onclick="startServices()" id="start-all-btn">
+                        <span class="spinner" id="start-spinner" style="display: none;"></span>
+                        Start
+                    </button>
+                    <span class="tooltiptext">Launch both backend API and frontend interface</span>
+                </div>
+                <div class="tooltip">
+                    <button class="btn btn-warning-outline" onclick="restartServices()" id="restart-all-btn">
+                        <span class="spinner" id="restart-spinner" style="display: none;"></span>
+                        Restart
+                    </button>
+                    <span class="tooltiptext">Restart both services (useful for applying changes)</span>
+                </div>
+                <div class="tooltip">
+                    <button class="btn btn-danger-outline" onclick="stopServices()" id="stop-all-btn">
+                        <span class="spinner" id="stop-spinner" style="display: none;"></span>
+                        Stop
+                    </button>
+                    <span class="tooltiptext">Stop all running services</span>
+                </div>
+            </div>
+            
+            <h3 style="margin-top: 30px; color: #64b5f6; font-size: 18px;">Backend API Controls</h3>
+            <div class="button-group-service">
+                <div class="tooltip">
+                    <button class="btn btn-secondary" onclick="startBackend()" id="start-backend-btn">
+                        Start
+                    </button>
+                    <span class="tooltiptext">Launch the API server (handles web scraping & data processing)</span>
+                </div>
+                <div class="tooltip">
+                    <button class="btn btn-warning-outline" onclick="restartBackend()" id="restart-backend-btn">
+                        Restart
+                    </button>
+                    <span class="tooltiptext">Restart the backend server</span>
+                </div>
+                <div class="tooltip">
+                    <button class="btn btn-danger-outline" onclick="stopBackend()" id="stop-backend-btn">
+                        Stop
+                    </button>
+                    <span class="tooltiptext">Stop the backend server</span>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 25px; color: #64b5f6; font-size: 18px;">Frontend Interface Controls</h3>
+            <div class="button-group-service">
+                <div class="tooltip">
+                    <button class="btn btn-secondary" onclick="startFrontend()" id="start-frontend-btn">
+                        Start
+                    </button>
+                    <span class="tooltiptext">Launch the web interface for users</span>
+                </div>
+                <div class="tooltip">
+                    <button class="btn btn-warning-outline" onclick="restartFrontend()" id="restart-frontend-btn">
+                        Restart
+                    </button>
+                    <span class="tooltiptext">Restart the frontend server</span>
+                </div>
+                <div class="tooltip">
+                    <button class="btn btn-danger-outline" onclick="stopFrontend()" id="stop-frontend-btn">
+                        Stop
+                    </button>
+                    <span class="tooltiptext">Stop the frontend server</span>
+                </div>
+            </div>
+
+            <div class="button-open-app">
+                <div class="tooltip">
+                    <button class="btn btn-primary" onclick="openFrontend()" id="open-frontend-btn">
+                        Open Price Checker
+                    </button>
+                    <span class="tooltiptext">Launch Price Checker in your default browser</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pharmacy Status -->
+        <div class="panel">
+            <h2>🏥 Pharmacy Status</h2>
+            
+            <div class="pharmacy-note">
+                <strong>Note:</strong> If a pharmacy shows as "Failed", try visiting the website directly in your browser. 
+                If it works there, the system should work too. Failed tests will automatically retry 3 times with delays.
+            </div>
+            
+            <div class="button-group-pharmacy">
+                <div class="tooltip">
+                    <button class="btn btn-primary" onclick="checkPharmacyStatus()" id="check-status-btn">
+                        <span class="spinner" id="status-spinner" style="display: none;"></span>
+                        Check All Pharmacies
+                    </button>
+                    <span class="tooltiptext">Test connectivity to all 5 pharmacy websites (3 retries each)</span>
+                </div>
+                <div class="tooltip">
+                    <button class="btn btn-special" onclick="refreshFailedPharmacies()" id="refresh-failed-btn" style="display: none;">
+                        Retry Failed Sites
+                    </button>
+                    <span class="tooltiptext">Retry only the failed pharmacy websites</span>
+                </div>
+            </div>
+            
+            <div class="status-grid" id="pharmacy-status">
+                <div class="status-item">
+                    <span>Click "Check Status" to verify pharmacy websites connectivity</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Console Logs -->
+        <div class="panel logs-container">
+            <h2>📋 Console Logs</h2>
+            <div class="button-group-logs">
+                <div class="tooltip">
+                    <button class="btn btn-tertiary" onclick="exportLogs()">
+                        Export Logs
+                    </button>
+                    <span class="tooltiptext">Save current session logs to a timestamped file</span>
+                </div>
+                <div class="tooltip">
+                    <button class="btn btn-tertiary" onclick="copyLogs()">
+                        Copy Logs
+                    </button>
+                    <span class="tooltiptext">Copy current session logs to clipboard</span>
+                </div>
+                <div class="tooltip">
+                    <button class="btn btn-tertiary" onclick="clearLogs()">
+                        Clear Display
+                    </button>
+                    <span class="tooltiptext">Clear the log display (logs are still saved)</span>
+                </div>
+                <div class="tooltip">
+                    <button class="btn btn-info" onclick="showTutorial()">
+                        Tutorial
+                    </button>
+                    <span class="tooltiptext">Show the step-by-step tutorial</span>
+                </div>
+            </div>
+            <div class="logs-output" id="logs-output">
+                Welcome to PriceCheck AI Control Panel!
+                Click any button above to start managing your application.
+                
+                Logs will appear here in real-time...
+            </div>
+        </div>
+    </div>
+
+    <!-- Tutorial Modal -->
+    <div id="tutorial-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeTutorial()">&times;</span>
+            <h2 style="color: #64b5f6; margin-bottom: 20px;">📚 How to Use PriceCheck AI</h2>
+            
+            <div class="tutorial-step">
+                <h3>Step 1: Start the Services</h3>
+                <p>Click "Start All" to launch both the backend server and frontend application. The backend handles web scraping and API requests, while the frontend provides the user interface.</p>
+            </div>
+
+            <div class="tutorial-step">
+                <h3>Step 2: Check Pharmacy Status</h3>
+                <p>Use the "Check Status" button to verify if pharmacy websites are online and accessible. This helps ensure the price checking functionality will work properly.</p>
+            </div>
+
+            <div class="tutorial-step">
+                <h3>Step 3: Monitor Logs</h3>
+                <p>Watch the console logs for real-time information about your application's status. You can export or copy logs for troubleshooting purposes.</p>
+            </div>
+
+            <div class="tutorial-step">
+                <h3>Step 4: Access the Application</h3>
+                <p>Once services are running, click "Open App" to launch the main PriceCheck AI interface in your default browser.</p>
+            </div>
+
+            <div class="tutorial-step">
+                <h3>Step 5: Manage Services</h3>
+                <p>Use the restart and stop buttons to manage individual services or all services at once. This is useful for troubleshooting or applying updates.</p>
+            </div>
+
+            <div class="checkbox-container">
+                <input type="checkbox" id="dont-show-again">
+                <label for="dont-show-again">Don't show this tutorial again</label>
+            </div>
+
+            <div style="margin-top: 20px; text-align: right;">
+                <button class="btn btn-primary" onclick="closeTutorial()">✅ Got it!</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <h3>Developer Information</h3>
+        <p><strong>PriceCheck AI</strong> - Philippines Medicine Price Checker</p>
+        <p>Developed by <strong>J5Apps</strong></p>
+        <p>Version <span id="app-version">1.0.0</span> | © 2024 All Rights Reserved</p>
+        <p style="margin-top: 10px; font-size: 12px;">
+            This application helps Filipino consumers find the best medicine prices across major pharmacy chains.
+        </p>
+    </div>
+
+    <script src="control-panel.js"></script>
+</body>
+</html> 
