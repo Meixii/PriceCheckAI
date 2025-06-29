@@ -1,6 +1,6 @@
 {
-  "name": "web-scrape",
-  "version": "1.0.0",
+  "name": "j5-scraper",
+  "version": "2.0.0",
   "main": "server.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",

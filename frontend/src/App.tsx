@@ -1338,27 +1338,56 @@ function App() {
                                   {item.status === 'completed' && item.results && (
                                     <div className="space-y-2">
                                       <div className="flex flex-wrap gap-1">
-                                        {Object.entries(item.results).map(([pharmacy, products]) => (
-                                          products.length > 0 && (
-                                            <Badge 
-                                              key={pharmacy} 
-                                              variant="secondary" 
-                                              className="text-xs"
-                                              style={{ 
-                                                backgroundColor: pharmacyColors[pharmacy] + '20',
-                                                color: pharmacyColors[pharmacy] || '#14b8a6',
-                                                border: `1px solid ${pharmacyColors[pharmacy] || '#14b8a6'}40`
-                                              }}
-                                            >
-                                              {pharmacy}: {products.length}
-                                            </Badge>
-                                          )
-                                        ))}
+                                        {/* Show all pharmacy results, including those with 0 products */}
+                                        {pharmacySources.map(pharmacy => {
+                                          const products = item.results?.[pharmacy] || [];
+                                          const hasError = item.errors?.[pharmacy];
+                                          
+                                          if (hasError) {
+                                            // Show failed pharmacies in red
+                                            return (
+                                              <Badge 
+                                                key={pharmacy} 
+                                                variant="outline" 
+                                                className="text-xs bg-red-50 text-red-700 border-red-300"
+                                              >
+                                                {pharmacy}: Failed
+                                              </Badge>
+                                            );
+                                          } else if (products.length > 0) {
+                                            // Show successful pharmacies with results
+                                            return (
+                                              <Badge 
+                                                key={pharmacy} 
+                                                variant="secondary" 
+                                                className="text-xs"
+                                                style={{ 
+                                                  backgroundColor: pharmacyColors[pharmacy] + '20',
+                                                  color: pharmacyColors[pharmacy] || '#14b8a6',
+                                                  border: `1px solid ${pharmacyColors[pharmacy] || '#14b8a6'}40`
+                                                }}
+                                              >
+                                                {pharmacy}: {products.length}
+                                              </Badge>
+                                            );
+                                          } else {
+                                            // Show pharmacies with 0 results
+                                            return (
+                                              <Badge 
+                                                key={pharmacy} 
+                                                variant="outline" 
+                                                className="text-xs bg-amber-50 text-amber-700 border-amber-300"
+                                              >
+                                                {pharmacy}: 0
+                                              </Badge>
+                                            );
+                                          }
+                                        })}
                                       </div>
                                       {Object.values(item.results).every(products => products.length === 0) && (
-                                        <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-300">
-                                          No results found
-                                        </Badge>
+                                        <div className="text-xs text-slate-600 mt-1">
+                                          No results found in any pharmacy
+                                        </div>
                                       )}
                                     </div>
                                   )}

@@ -371,8 +371,8 @@ async function watsons(SEARCH_TERM: string, abortSignal?: AbortSignal): Promise<
 }
 
 async function rose(SEARCH_TERM: string, abortSignal?: AbortSignal): Promise<Product[]> {
-    const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3';
-    const URL = `https://www.rosepharmacy.com/search?q=${SEARCH_TERM}`;
+    const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+    const URL = `https://www.rosepharmacy.com/?s=${SEARCH_TERM}&post_type=product`;
     let browser;
 
     try {
@@ -381,49 +381,121 @@ async function rose(SEARCH_TERM: string, abortSignal?: AbortSignal): Promise<Pro
             throw new Error('Operation was cancelled');
         }
 
+        console.log(`🔍 Rose Pharmacy: Starting search for "${SEARCH_TERM}" at ${URL}`);
+
         browser = await puppeteer.launch({
             args: ['--no-sandbox', '--disable-setuid-sandbox'],
             headless: true,
         });
         const page = await browser.newPage();
         
+        await page.setUserAgent(userAgent);
         page.setDefaultTimeout(45000);
         await page.goto(URL, { 
             waitUntil: 'domcontentloaded',
             timeout: 45000 
         });
 
-        await page.setViewport({ width: 300, height: 300 });
+        await page.setViewport({ width: 1200, height: 800 });
+
+        console.log(`📄 Rose Pharmacy: Page loaded, waiting for content...`);
 
         try {
             await page.waitForSelector('.wpb_wrapper', { timeout: 15000 });
+            console.log(`✅ Rose Pharmacy: Content wrapper found`);
         } catch (e) {
-            console.log("Rose Pharmacy: Content wrapper not found, continuing anyway");
+            console.log("⚠️ Rose Pharmacy: Content wrapper not found, trying alternative selectors...");
+            
+            // Try to wait for any product-related content
+            try {
+                await page.waitForSelector('.porto-tb-item', { timeout: 10000 });
+                console.log(`✅ Rose Pharmacy: Found product items with alternative selector`);
+            } catch (e2) {
+                console.log("⚠️ Rose Pharmacy: No product content found, proceeding anyway");
+                
+                // Log page content for debugging
+                const pageContent = await page.content();
+                if (pageContent.includes('No products found') || pageContent.includes('no results')) {
+                    console.log(`🔍 Rose Pharmacy: Page indicates no products found for "${SEARCH_TERM}"`);
+                } else {
+                    console.log(`🔍 Rose Pharmacy: Page loaded but no expected selectors found`);
+                }
+            }
         }
         
-        const productHandles = await page.$$('.porto-posts-grid.porto-posts-grid-75121fa532f6c490d02770d2b728412e > .products-container > .porto-tb-item');
+        // Try multiple selector strategies
+        let productHandles = await page.$$('.porto-posts-grid.porto-posts-grid-75121fa532f6c490d02770d2b728412e > .products-container > .porto-tb-item');
         
+        if (productHandles.length === 0) {
+            console.log(`🔍 Rose Pharmacy: Primary selector found 0 products, trying alternative selectors...`);
+            
+            // Alternative selector 1
+            productHandles = await page.$$('.porto-tb-item');
+            console.log(`🔍 Rose Pharmacy: Alternative selector 1 found ${productHandles.length} products`);
+            
+            if (productHandles.length === 0) {
+                // Alternative selector 2
+                productHandles = await page.$$('[class*="product"]');
+                console.log(`🔍 Rose Pharmacy: Alternative selector 2 found ${productHandles.length} products`);
+                
+                if (productHandles.length === 0) {
+                    // Alternative selector 3
+                    productHandles = await page.$$('.woocommerce-product, .product');
+                    console.log(`🔍 Rose Pharmacy: Alternative selector 3 found ${productHandles.length} products`);
+                }
+            }
+        } else {
+            console.log(`✅ Rose Pharmacy: Primary selector found ${productHandles.length} products`);
+        }
+
         const products: Product[] = [];
         for (const productHandle of productHandles) {
             try {
-                const title = await page.evaluate(el => el.querySelector(".post-title")?.textContent, productHandle);
-                const formatTitle = title?.replace(/(\r\n|\n|\r)/gm, "").trim();
-                const price = await page.evaluate(el => el.querySelector(".woocommerce-Price-amount.amount")?.textContent, productHandle);
-                const formatPrice = price?.replace(/(\r\n|\n|\r)/gm, "").trim();
-                const link = await page.evaluate(el => el.querySelector(".porto-tb-featured-image a")?.getAttribute('href'), productHandle);
+                const title = await page.evaluate(el => {
+                    // Try multiple title selectors
+                    return el.querySelector(".post-title")?.textContent ||
+                           el.querySelector(".product-title")?.textContent ||
+                           el.querySelector("h2")?.textContent ||
+                           el.querySelector("h3")?.textContent ||
+                           el.querySelector("[class*='title']")?.textContent;
+                }, productHandle);
                 
-                products.push({
-                    title: formatTitle,
-                    price: formatPrice,
-                    link: link
-                });
+                const formatTitle = title?.replace(/(\r\n|\n|\r)/gm, "").trim();
+                
+                const price = await page.evaluate(el => {
+                    // Try multiple price selectors
+                    return el.querySelector(".woocommerce-Price-amount.amount")?.textContent ||
+                           el.querySelector(".price")?.textContent ||
+                           el.querySelector("[class*='price']")?.textContent ||
+                           el.querySelector(".amount")?.textContent;
+                }, productHandle);
+                
+                const formatPrice = price?.replace(/(\r\n|\n|\r)/gm, "").trim();
+                
+                const link = await page.evaluate(el => {
+                    // Try multiple link selectors
+                    return el.querySelector(".porto-tb-featured-image a")?.getAttribute('href') ||
+                           el.querySelector("a")?.getAttribute('href');
+                }, productHandle);
+
+                if (formatTitle) {  // Only add if we have a title
+                    products.push({
+                        title: formatTitle,
+                        price: formatPrice,
+                        link: link
+                    });
+                }
 
             } catch (error) { 
-                console.log("Error processing Rose Pharmacy product:", error);
+                console.log("⚠️ Rose Pharmacy: Error processing product:", error);
             }
         }
 
+        console.log(`✅ Rose Pharmacy: Successfully scraped ${products.length} products for "${SEARCH_TERM}"`);
         return products;
+    } catch (error) {
+        console.error(`❌ Rose Pharmacy: Error scraping for "${SEARCH_TERM}":`, error);
+        throw error;
     } finally {
         if (browser) {
             await browser.close();
@@ -432,7 +504,7 @@ async function rose(SEARCH_TERM: string, abortSignal?: AbortSignal): Promise<Pro
 }
 
 async function getmeds(SEARCH_TERM: string, abortSignal?: AbortSignal): Promise<Product[]> {
-    const URL = `https://getmeds.ph/index.php?route=product/search&search=${SEARCH_TERM}`;
+    const URL = `https://getmeds.ph/search?s=${SEARCH_TERM}`;
     let browser;
 
     try {
@@ -441,11 +513,16 @@ async function getmeds(SEARCH_TERM: string, abortSignal?: AbortSignal): Promise<
             throw new Error('Operation was cancelled');
         }
 
+        console.log(`🔍 GetMeds: Starting search for "${SEARCH_TERM}" at ${URL}`);
+
         browser = await puppeteer.launch({
             args: ['--no-sandbox', '--disable-setuid-sandbox'],
             headless: true,
         });
         const page = await browser.newPage();
+        
+        // Set user agent to avoid blocking
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
         
         page.setDefaultTimeout(45000);
         await page.goto(URL, { 
@@ -453,37 +530,100 @@ async function getmeds(SEARCH_TERM: string, abortSignal?: AbortSignal): Promise<
             timeout: 45000 
         });
 
-        await page.setViewport({ width: 300, height: 300 });
+        await page.setViewport({ width: 1200, height: 800 });
+
+        console.log(`📄 GetMeds: Page loaded, waiting for content...`);
 
         try {
             await page.waitForSelector('.product_list_outer', { timeout: 15000 });
+            console.log(`✅ GetMeds: Product list container found`);
         } catch (e) {
-            console.log("GetMeds: Product list not found, continuing anyway");
+            console.log("⚠️ GetMeds: Product list container not found, trying alternative selectors...");
+            
+            // Try to wait for any product-related content
+            try {
+                await page.waitForSelector('.product_item', { timeout: 10000 });
+                console.log(`✅ GetMeds: Found product items with alternative selector`);
+            } catch (e2) {
+                console.log("⚠️ GetMeds: No product content found, proceeding anyway");
+                
+                // Log page content for debugging
+                const pageContent = await page.content();
+                if (pageContent.includes('No products found') || pageContent.includes('no results')) {
+                    console.log(`🔍 GetMeds: Page indicates no products found for "${SEARCH_TERM}"`);
+                } else {
+                    console.log(`🔍 GetMeds: Page loaded but no expected selectors found`);
+                }
+            }
         }
         
-        const productHandles = await page.$$('.product_list_outer > .row.product_list > .col-md-4.col-sm-6 > .product_item');
+        // Try multiple selector strategies
+        let productHandles = await page.$$('.product_list_outer > .row.product_list > .col-md-4.col-sm-6 > .product_item');
+        
+        if (productHandles.length === 0) {
+            console.log(`🔍 GetMeds: Primary selector found 0 products, trying alternative selectors...`);
+            
+            // Alternative selector 1
+            productHandles = await page.$$('.product_item');
+            console.log(`🔍 GetMeds: Alternative selector 1 found ${productHandles.length} products`);
+            
+            if (productHandles.length === 0) {
+                // Alternative selector 2
+                productHandles = await page.$$('[class*="product"]');
+                console.log(`🔍 GetMeds: Alternative selector 2 found ${productHandles.length} products`);
+            }
+        } else {
+            console.log(`✅ GetMeds: Primary selector found ${productHandles.length} products`);
+        }
 
         const products: Product[] = [];
         for (const productHandle of productHandles) {
             try {
-                const title = await page.evaluate(el => el.querySelector(".product_item_title")?.textContent, productHandle);
+                const title = await page.evaluate(el => {
+                    // Try multiple title selectors
+                    return el.querySelector(".product_item_title")?.textContent ||
+                           el.querySelector(".product-title")?.textContent ||
+                           el.querySelector("[class*='title']")?.textContent ||
+                           el.querySelector("h3")?.textContent ||
+                           el.querySelector("h4")?.textContent;
+                }, productHandle);
+                
                 const formatTitle = title?.replace(/(\r\n|\n|\r)/gm, "").trim();
-                const price = await page.evaluate(el => el.querySelector(".product-list-price")?.textContent, productHandle);
+                
+                const price = await page.evaluate(el => {
+                    // Try multiple price selectors
+                    return el.querySelector(".product-list-price")?.textContent ||
+                           el.querySelector(".price")?.textContent ||
+                           el.querySelector("[class*='price']")?.textContent ||
+                           el.querySelector(".amount")?.textContent;
+                }, productHandle);
+                
                 const formatPrice = price?.replace(/(\r\n|\n|\r)/gm, "").trim();
-                const link = await page.evaluate(el => el.querySelector(".product_item a")?.getAttribute('href'), productHandle);
+                
+                const link = await page.evaluate(el => {
+                    // Try multiple link selectors
+                    return el.querySelector(".product_item a")?.getAttribute('href') ||
+                           el.querySelector("a")?.getAttribute('href');
+                }, productHandle);
 
-                products.push({
-                    title: formatTitle,
-                    price: formatPrice,
-                    link: link
-                });
+                if (formatTitle) {  // Only add if we have a title
+                    products.push({
+                        title: formatTitle,
+                        price: formatPrice,
+                        link: link
+                    });
+                }
 
             } catch (error) { 
-                console.log("Error processing GetMeds product:", error);
+                console.log("⚠️ GetMeds: Error processing product:", error);
             }
         }
 
+        console.log(`✅ GetMeds: Successfully scraped ${products.length} products for "${SEARCH_TERM}"`);
         return products;
+    } catch (error) {
+        console.error(`❌ GetMeds: Error scraping for "${SEARCH_TERM}":`, error);
+        throw error;
     } finally {
         if (browser) {
             await browser.close();

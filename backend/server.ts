@@ -14,13 +14,26 @@ server_app.use(express.json());
 
 // More permissive CORS for development
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
-const allowedOrigins = [FRONTEND_URL, 'http://localhost:3000', 'http://127.0.0.1:5173', 'http://127.0.0.1:3000'];
+const allowedOrigins = [
+  FRONTEND_URL, 
+  'http://localhost:3000', 
+  'http://localhost:5173', 
+  'http://localhost:5174', 
+  'http://localhost:5175',
+  'http://127.0.0.1:5173', 
+  'http://127.0.0.1:5174',
+  'http://127.0.0.1:5175',
+  'http://127.0.0.1:3000'
+];
 const options: cors.CorsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    // For development, allow any localhost origin
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      callback(null, true);
+    } else if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
       console.log(`CORS blocked origin: ${origin}`);
