@@ -1,0 +1,118 @@
+{
+  "name": "j5-pricecheck",
+  "version": "1.0.0",
+  "description": "J5 PriceCheck - Philippines Medicine Price Checker",
+  "main": "main.js",
+  "author": {
+    "name": "Zen Garden",
+    "email": "zengarden.appdev@gmail.com"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/j5apps/pricecheck-ai",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/j5apps/pricecheck-ai.git"
+  },
+  "keywords": [
+    "pharmacy",
+    "medicine",
+    "price",
+    "checker",
+    "philippines",
+    "electron",
+    "control-panel"
+  ],
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:win-portable": "electron-builder --win portable",
+    "build:win-installer": "electron-builder --win nsis",
+    "dist": "npm run build:win-installer",
+    "pack": "electron-builder --dir",
+    "postinstall": "electron-builder install-app-deps",
+    "rebuild": "electron-rebuild",
+    "test-setup": "node test-setup.js"
+  },
+  "dependencies": {
+    "electron-updater": "^6.1.7"
+  },
+  "devDependencies": {
+    "electron": "^28.2.0",
+    "electron-builder": "^24.9.1",
+    "electron-rebuild": "^3.2.9"
+  },
+  "build": {
+    "appId": "com.j5apps.pricecheck-ai",
+    "productName": "PriceCheck AI Control Panel",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "control-panel.js",
+      "control-panel.html",
+      "splash.html",
+      "assets/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/logo.ico",
+      "publisherName": "J5Apps",
+      "verifyUpdateCodeSignature": false,
+      "requestedExecutionLevel": "requireAdministrator"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/logo.ico",
+      "uninstallerIcon": "assets/logo.ico",
+      "installerHeaderIcon": "assets/logo.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "PriceCheck AI",
+      "include": "installer.nsh",
+      "script": "installer.nsh",
+      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "deleteAppDataOnUninstall": false,
+      "menuCategory": "Productivity",
+      "displayLanguageSelector": false,
+      "installerLanguages": [
+        "en_US"
+      ],
+      "license": "LICENSE.txt",
+      "warningsAsErrors": false
+    },
+    "portable": {
+      "artifactName": "${productName}-Portable-${version}.${ext}"
+    },
+    "publish": null,
+    "compression": "maximum",
+    "buildVersion": "1.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+} 

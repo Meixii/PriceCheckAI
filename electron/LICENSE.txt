@@ -1,0 +1,44 @@
+PriceCheck AI Control Panel
+Copyright (c) 2024 J5Apps
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+ADDITIONAL TERMS FOR PRICECHECK AI:
+
+1. This software is designed to help Filipino consumers find medicine prices
+   across major pharmacy chains in the Philippines.
+
+2. The software uses web scraping to gather publicly available pricing 
+   information. Users are responsible for ensuring their use complies with
+   the terms of service of the pharmacy websites.
+
+3. Price information is provided for informational purposes only. Actual
+   prices may vary and should be verified with the pharmacy directly.
+
+4. The developers are not responsible for the accuracy of price information
+   or any decisions made based on this information.
+
+5. This software is provided free of charge and is not affiliated with any
+   pharmacy chain or medical institution.
+
+6. Users should always consult with healthcare professionals before making
+   any medical decisions.
+
+For support and updates, visit: https://j5apps.com
+Contact: support@j5apps.com 
