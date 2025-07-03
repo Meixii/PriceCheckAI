@@ -17,7 +17,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
+  // AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
 import axiosInstance from './api/axiosInstance';
@@ -97,7 +97,7 @@ function App() {
   const [searchMode, setSearchMode] = useState<SearchMode>('single');
   const [multipleItems, setMultipleItems] = useState<string[]>([]);
   const [newItemName, setNewItemName] = useState<string>('');
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [, setUploadedFile] = useState<File | null>(null);
   const [previewItems, setPreviewItems] = useState<string[]>([]);
   const [multipleSearchSession, setMultipleSearchSession] = useState<string | null>(null);
   const [multipleSearchProgress, setMultipleSearchProgress] = useState<MultipleSearchProgress | null>(null);
@@ -1243,7 +1243,7 @@ function App() {
                         <div>
                           {(() => {
                             const completedItems = multipleSearchProgress.items.filter(item => item.status === 'completed').length;
-                            const cancelledItems = multipleSearchProgress.items.filter(item => item.status === 'cancelled').length;
+                            // const cancelledItems = multipleSearchProgress.items.filter(item => item.status === 'cancelled').length;
                             const totalItems = multipleSearchProgress.totalItems;
                             const isCompleted = multipleSearchProgress.status === 'completed';
                             const isCancelled = multipleSearchProgress.status === 'cancelled';
@@ -1301,7 +1301,7 @@ function App() {
                         
                         {/* Grid layout for progress items */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {multipleSearchProgress.items.map((item, index) => (
+                          {multipleSearchProgress.items.map((item) => (
                             <Card key={item.id} className="bg-white border border-blue-200 shadow-sm">
                               <CardContent className="p-4">
                                 <div className="space-y-3">

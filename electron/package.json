@@ -1,6 +1,6 @@
 {
   "name": "j5-pricecheck",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "J5 PriceCheck - Philippines Medicine Price Checker",
   "main": "main.js",
   "author": {
@@ -8,10 +8,10 @@
     "email": "zengarden.appdev@gmail.com"
   },
   "license": "MIT",
-  "homepage": "https://github.com/j5apps/pricecheck-ai",
+  "homepage": "https://github.com/Meixii/PriceCheckAI",
   "repository": {
     "type": "git",
-    "url": "https://github.com/j5apps/pricecheck-ai.git"
+    "url": "https://github.com/Meixii/PriceCheckAI.git"
   },
   "keywords": [
     "pharmacy",
@@ -36,7 +36,8 @@
     "test-setup": "node test-setup.js"
   },
   "dependencies": {
-    "electron-updater": "^6.1.7"
+    "electron-updater": "^6.1.7",
+    "express": "^5.1.0"
   },
   "devDependencies": {
     "electron": "^28.2.0",
@@ -45,7 +46,7 @@
   },
   "build": {
     "appId": "com.j5apps.pricecheck-ai",
-    "productName": "PriceCheck AI Control Panel",
+    "productName": "J5 PriceCheck",
     "directories": {
       "output": "dist",
       "buildResources": "build"
@@ -57,6 +58,8 @@
       "control-panel.html",
       "splash.html",
       "assets/**/*",
+      "www/**/*",
+      "backend/**/*",
       "node_modules/**/*",
       "package.json"
     ],
@@ -80,12 +83,12 @@
       "icon": "assets/logo.ico",
       "publisherName": "J5Apps",
       "verifyUpdateCodeSignature": false,
-      "requestedExecutionLevel": "requireAdministrator"
+      "requestedExecutionLevel": "asInvoker"
     },
     "nsis": {
       "oneClick": false,
-      "perMachine": true,
-      "allowElevation": true,
+      "perMachine": false,
+      "allowElevation": false,
       "allowToChangeInstallationDirectory": true,
       "installerIcon": "assets/logo.ico",
       "uninstallerIcon": "assets/logo.ico",
@@ -93,11 +96,10 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "PriceCheck AI",
-      "include": "installer.nsh",
-      "script": "installer.nsh",
+
       "artifactName": "${productName}-Setup-${version}.${ext}",
       "deleteAppDataOnUninstall": false,
-      "menuCategory": "Productivity",
+      "menuCategory": "J5Apps",
       "displayLanguageSelector": false,
       "installerLanguages": [
         "en_US"

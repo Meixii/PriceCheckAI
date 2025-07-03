@@ -4,3 +4,6 @@ out
 /dist
 /Docs
 *.mdc
+/electron/backend
+/electron/www
+/electron/dist

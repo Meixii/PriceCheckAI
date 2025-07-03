@@ -6,7 +6,6 @@
 !include "FileFunc.nsh"
 
 ; Installer branding
-!define MUI_ICON "${BUILD_RESOURCES_DIR}\assets\logo.ico"
 !define MUI_HEADERIMAGE
 !define MUI_HEADERIMAGE_BITMAP "${BUILD_RESOURCES_DIR}\assets\logo-banner.png"
 !define MUI_HEADERIMAGE_RIGHT

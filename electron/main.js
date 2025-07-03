@@ -236,42 +236,83 @@ class PriceCheckAIApp {
             }
 
             try {
-                // Always use the original backend location relative to the electron folder
-                const backendPath = path.join(__dirname, '..', 'backend');
+                // Use the bundled backend location
+                const backendPath = path.join(__dirname, 'backend');
+                const serverFile = path.join(backendPath, 'server.ts');
                 
                 this.sendLogToRenderer('system', `Backend path: ${backendPath}`);
+                this.sendLogToRenderer('system', `Starting backend server: ${serverFile}`);
                 
-                // Install dependencies if needed
-                this.installDependencies(backendPath, () => {
-                    // Start the backend server
+                // Check if backend files exist
+                if (!fs.existsSync(serverFile)) {
+                    this.sendLogToRenderer('error', `Backend server file not found: ${serverFile}`);
+                    reject(new Error('Backend server file not found'));
+                    return;
+                }
+
+                // Check if we're in development or production mode
+                const isDev = process.env.NODE_ENV === 'development' || process.argv.includes('--dev');
+                
+                let backendCmd, backendArgs;
+                
+                if (isDev) {
+                    // Development mode - use ts-node
                     const isWindows = process.platform === 'win32';
-                    const npmCmd = isWindows ? 'npm.cmd' : 'npm';
+                    backendCmd = isWindows ? 'npm.cmd' : 'npm';
+                    backendArgs = ['run', 'dev'];
+                } else {
+                    // Production mode - try to run compiled JS or fallback to ts-node
+                    const compiledServer = path.join(backendPath, 'dist', 'server.js');
+                    const isWindows = process.platform === 'win32';
                     
-                    this.backendProcess = spawn(npmCmd, ['run', 'dev'], {
-                        cwd: backendPath,
-                        stdio: 'pipe',
-                        shell: true
-                    });
-
-                    this.backendProcess.stdout.on('data', (data) => {
-                        this.sendLogToRenderer('backend', data.toString());
-                    });
-
-                    this.backendProcess.stderr.on('data', (data) => {
-                        this.sendLogToRenderer('backend-error', data.toString());
-                    });
-
-                    this.backendProcess.on('close', (code) => {
-                        this.backendProcess = null;
-                        this.sendLogToRenderer('backend', `Backend process exited with code ${code}`);
-                    });
-
-                    // Wait a bit to ensure it started
-                    setTimeout(() => {
-                        resolve({ success: true, message: 'Backend started successfully' });
-                    }, 3000);
+                    if (fs.existsSync(compiledServer)) {
+                        backendCmd = isWindows ? 'node.exe' : 'node';
+                        backendArgs = ['dist/server.js'];
+                    } else {
+                        // Fallback to running TypeScript directly with node and ts-node
+                        backendCmd = isWindows ? 'node.exe' : 'node';
+                        backendArgs = ['-r', 'ts-node/register', 'server.ts'];
+                    }
+                }
+                
+                this.sendLogToRenderer('system', `Starting backend with: ${backendCmd} ${backendArgs.join(' ')}`);
+                
+                this.backendProcess = spawn(backendCmd, backendArgs, {
+                    cwd: backendPath,
+                    stdio: 'pipe',
+                    shell: true,
+                    env: { ...process.env, NODE_ENV: 'production' }
                 });
+
+                this.backendProcess.stdout.on('data', (data) => {
+                    this.sendLogToRenderer('backend', data.toString());
+                });
+
+                this.backendProcess.stderr.on('data', (data) => {
+                    this.sendLogToRenderer('backend-error', data.toString());
+                });
+
+                this.backendProcess.on('close', (code) => {
+                    this.backendProcess = null;
+                    this.sendLogToRenderer('backend', `Backend process exited with code ${code}`);
+                });
+
+                this.backendProcess.on('error', (error) => {
+                    this.sendLogToRenderer('backend-error', `Backend process error: ${error.message}`);
+                    this.backendProcess = null;
+                    reject(error);
+                });
+
+                // Wait a bit to ensure it started
+                setTimeout(() => {
+                    if (this.backendProcess) {
+                        resolve({ success: true, message: 'Backend started successfully' });
+                    } else {
+                        reject(new Error('Backend failed to start'));
+                    }
+                }, 3000);
             } catch (error) {
+                this.sendLogToRenderer('backend-error', `Error starting backend: ${error.message}`);
                 reject(error);
             }
         });
@@ -302,42 +343,56 @@ class PriceCheckAIApp {
             }
 
             try {
-                // Always use the original frontend location relative to the electron folder
-                const frontendPath = path.join(__dirname, '..', 'frontend');
+                // Start a simple HTTP server for the bundled frontend
+                const express = require('express');
+                const frontendPath = path.join(__dirname, 'www');
                 
                 this.sendLogToRenderer('system', `Frontend path: ${frontendPath}`);
                 
-                // Install dependencies if needed
-                this.installDependencies(frontendPath, () => {
-                    // Start the frontend server
-                    const isWindows = process.platform === 'win32';
-                    const npmCmd = isWindows ? 'npm.cmd' : 'npm';
-                    
-                    this.frontendProcess = spawn(npmCmd, ['run', 'dev'], {
-                        cwd: frontendPath,
-                        stdio: 'pipe',
-                        shell: true
-                    });
+                // Check if frontend files exist
+                if (!fs.existsSync(frontendPath)) {
+                    this.sendLogToRenderer('error', `Frontend directory does not exist: ${frontendPath}`);
+                    reject(new Error('Frontend directory not found'));
+                    return;
+                }
 
-                    this.frontendProcess.stdout.on('data', (data) => {
-                        this.sendLogToRenderer('frontend', data.toString());
+                // Create Express server for static files
+                const app = express();
+                
+                // Serve static files first
+                app.use(express.static(frontendPath, {
+                    index: false, // Don't serve index.html automatically
+                    fallthrough: true
+                }));
+                
+                // Handle SPA routing - serve index.html for all non-asset routes
+                app.use((req, res, next) => {
+                    // Skip if it's an asset request (has file extension)
+                    if (path.extname(req.path)) {
+                        return next();
+                    }
+                    // Serve index.html for SPA routes
+                    res.sendFile(path.join(frontendPath, 'index.html'), (err) => {
+                        if (err) {
+                            this.sendLogToRenderer('frontend-error', `Error serving index.html: ${err.message}`);
+                            res.status(500).send('Error loading application');
+                        }
                     });
-
-                    this.frontendProcess.stderr.on('data', (data) => {
-                        this.sendLogToRenderer('frontend-error', data.toString());
-                    });
-
-                    this.frontendProcess.on('close', (code) => {
-                        this.frontendProcess = null;
-                        this.sendLogToRenderer('frontend', `Frontend process exited with code ${code}`);
-                    });
-
-                    // Wait a bit to ensure it started
-                    setTimeout(() => {
-                        resolve({ success: true, message: 'Frontend started successfully' });
-                    }, 3000);
                 });
+
+                const server = app.listen(5173, () => {
+                    this.sendLogToRenderer('frontend', 'Frontend server started on http://localhost:5173');
+                    this.frontendProcess = server; // Store server instance
+                    resolve({ success: true, message: 'Frontend started successfully' });
+                });
+
+                server.on('error', (error) => {
+                    this.sendLogToRenderer('frontend-error', `Frontend server error: ${error.message}`);
+                    reject(error);
+                });
+                
             } catch (error) {
+                this.sendLogToRenderer('frontend-error', `Error starting frontend: ${error.message}`);
                 reject(error);
             }
         });
@@ -346,11 +401,23 @@ class PriceCheckAIApp {
     async stopFrontend() {
         return new Promise((resolve) => {
             if (this.frontendProcess) {
-                this.frontendProcess.kill();
-                this.frontendProcess = null;
-                this.sendLogToRenderer('frontend', 'Frontend stopped');
+                if (typeof this.frontendProcess.close === 'function') {
+                    // Express server
+                    this.frontendProcess.close(() => {
+                        this.frontendProcess = null;
+                        this.sendLogToRenderer('frontend', 'Frontend server stopped');
+                        resolve({ success: true, message: 'Frontend stopped' });
+                    });
+                } else {
+                    // Process
+                    this.frontendProcess.kill();
+                    this.frontendProcess = null;
+                    this.sendLogToRenderer('frontend', 'Frontend stopped');
+                    resolve({ success: true, message: 'Frontend stopped' });
+                }
+            } else {
+                resolve({ success: true, message: 'Frontend stopped' });
             }
-            resolve({ success: true, message: 'Frontend stopped' });
         });
     }
 
