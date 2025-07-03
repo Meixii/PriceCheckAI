@@ -47,6 +47,7 @@
   "build": {
     "appId": "com.j5apps.pricecheck-ai",
     "productName": "J5 PriceCheck",
+    "asar": false,
     "directories": {
       "output": "dist",
       "buildResources": "build"

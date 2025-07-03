@@ -32,6 +32,11 @@ class ControlPanel {
         document.getElementById('stop-frontend-btn').addEventListener('click', () => this.stopFrontend());
         document.getElementById('restart-frontend-btn').addEventListener('click', () => this.restartFrontend());
         
+        // Emergency controls
+        document.getElementById('force-cleanup-btn').addEventListener('click', () => this.forceCleanup());
+        document.getElementById('emergency-shutdown-btn').addEventListener('click', () => this.emergencyShutdown());
+        document.getElementById('repair-deps-btn').addEventListener('click', () => this.repairDependencies());
+        
         // Utility buttons
         document.getElementById('open-frontend-btn').addEventListener('click', () => this.openFrontend());
         document.getElementById('check-status-btn').addEventListener('click', () => this.checkPharmacyStatus());
@@ -367,6 +372,99 @@ class ControlPanel {
             }, 2000);
         }
     }
+
+    async forceCleanup() {
+        // Show confirmation dialog
+        const confirmed = confirm(
+            '⚠️ WARNING: Force Stop All\n\n' +
+            'This will immediately kill all running processes without graceful shutdown.\n' +
+            'Only use this if normal stop controls are not working.\n\n' +
+            'Are you sure you want to continue?'
+        );
+
+        if (!confirmed) {
+            this.addLog('system', 'Force cleanup cancelled by user');
+            return;
+        }
+
+        this.setButtonLoading('force-cleanup-btn', null, true);
+        this.addLog('system', '🔴 EMERGENCY: Force stopping all processes...');
+        
+        try {
+            await window.electronAPI.forceCleanup();
+            this.addLog('system', 'Force cleanup completed');
+        } catch (error) {
+            this.addLog('error', `Force cleanup error: ${error.message}`);
+        } finally {
+            this.setButtonLoading('force-cleanup-btn', null, false);
+            // Update status after cleanup
+            setTimeout(() => this.updateServiceStatus(), 1000);
+        }
+    }
+
+    async emergencyShutdown() {
+        // Show confirmation dialog
+        const confirmed = confirm(
+            '🔴 EMERGENCY SHUTDOWN\n\n' +
+            'This will immediately close the entire application and stop all services.\n' +
+            'Any unsaved work may be lost.\n\n' +
+            'Are you sure you want to exit the application?'
+        );
+
+        if (!confirmed) {
+            this.addLog('system', 'Emergency shutdown cancelled by user');
+            return;
+        }
+
+        this.setButtonLoading('emergency-shutdown-btn', null, true);
+        this.addLog('system', '🔴 EMERGENCY SHUTDOWN: Closing application...');
+        
+        try {
+            // Give a brief moment for the log to display
+            setTimeout(async () => {
+                await window.electronAPI.emergencyShutdown();
+            }, 500);
+        } catch (error) {
+            this.addLog('error', `Emergency shutdown error: ${error.message}`);
+            this.setButtonLoading('emergency-shutdown-btn', null, false);
+        }
+    }
+
+    async repairDependencies() {
+        // Show confirmation dialog
+        const confirmed = confirm(
+            '🔧 REPAIR BACKEND DEPENDENCIES\n\n' +
+            'This will:\n' +
+            '• Stop the backend service\n' +
+            '• Clean all existing dependencies\n' +
+            '• Reinstall everything from scratch\n\n' +
+            'This may take several minutes. Continue?'
+        );
+
+        if (!confirmed) {
+            this.addLog('system', 'Dependency repair cancelled by user');
+            return;
+        }
+
+        this.setButtonLoading('repair-deps-btn', null, true);
+        this.addLog('system', '🔧 REPAIR: Starting backend dependency repair...');
+        
+        try {
+            const result = await window.electronAPI.repairDependencies();
+            if (result.success) {
+                this.addLog('system', '✅ Repair completed successfully');
+                this.addLog('system', 'You can now try starting the backend again');
+            } else {
+                this.addLog('error', `Repair failed: ${result.message}`);
+            }
+        } catch (error) {
+            this.addLog('error', `Repair error: ${error.message}`);
+        } finally {
+            this.setButtonLoading('repair-deps-btn', null, false);
+            // Update status after repair
+            setTimeout(() => this.updateServiceStatus(), 1000);
+        }
+    }
 }
 
 // Initialize the control panel when the page loads
@@ -391,4 +489,7 @@ window.copyLogs = () => window.controlPanel?.copyLogs();
 window.clearLogs = () => window.controlPanel?.clearLogs();
 window.showTutorial = () => window.controlPanel?.showTutorial();
 window.closeTutorial = () => window.controlPanel?.closeTutorial();
-window.refreshFailedPharmacies = () => window.controlPanel?.checkPharmacyStatus(); 
+window.refreshFailedPharmacies = () => window.controlPanel?.checkPharmacyStatus();
+window.forceCleanup = () => window.controlPanel?.forceCleanup();
+window.emergencyShutdown = () => window.controlPanel?.emergencyShutdown();
+window.repairDependencies = () => window.controlPanel?.repairDependencies(); 

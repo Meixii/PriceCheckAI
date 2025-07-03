@@ -1107,10 +1107,32 @@
 
             <div class="button-open-app">
                 <div class="tooltip">
-                    <button class="btn btn-primary" onclick="openFrontend()" id="open-frontend-btn">
+                    <button class="btn btn-primary" id="open-frontend-btn">
                         Open Price Checker
                     </button>
                     <span class="tooltiptext">Launch Price Checker in your default browser</span>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 30px; color: #ff6b6b; font-size: 18px;">🔴 Emergency Controls</h3>
+            <div class="button-group-service">
+                <div class="tooltip">
+                    <button class="btn btn-danger" onclick="forceCleanup()" id="force-cleanup-btn">
+                        Force Stop All
+                    </button>
+                    <span class="tooltiptext">Force kill all processes immediately (use if normal stop fails)</span>
+                </div>
+                <div class="tooltip">
+                    <button class="btn btn-danger" onclick="emergencyShutdown()" id="emergency-shutdown-btn">
+                        Emergency Exit
+                    </button>
+                    <span class="tooltiptext">Emergency shutdown of the entire application</span>
+                </div>
+                <div class="tooltip">
+                    <button class="btn btn-warning" onclick="repairDependencies()" id="repair-deps-btn">
+                        Repair Backend
+                    </button>
+                    <span class="tooltiptext">Clean and reinstall backend dependencies (fixes corruption issues)</span>
                 </div>
             </div>
         </div>

@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
-const { spawn, exec } = require('child_process');
+const { spawn, exec, fork } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 
@@ -49,6 +49,25 @@ class PriceCheckAIApp {
                 this.handleAppQuit();
             }
         });
+
+        // Handle process signals
+        process.on('SIGINT', () => {
+            this.sendLogToRenderer('system', 'Received SIGINT, shutting down...');
+            this.handleAppQuit();
+        });
+
+        process.on('SIGTERM', () => {
+            this.sendLogToRenderer('system', 'Received SIGTERM, shutting down...');
+            this.handleAppQuit();
+        });
+
+        // Handle Windows specific close events
+        if (process.platform === 'win32') {
+            process.on('SIGBREAK', () => {
+                this.sendLogToRenderer('system', 'Received SIGBREAK, shutting down...');
+                this.handleAppQuit();
+            });
+        }
     }
 
     createSplashWindow() {
@@ -102,6 +121,14 @@ class PriceCheckAIApp {
         // Handle window closed
         this.mainWindow.on('closed', () => {
             this.mainWindow = null;
+        });
+
+        // Handle window close request
+        this.mainWindow.on('close', (event) => {
+            if (!this.isQuitting) {
+                event.preventDefault();
+                this.handleAppQuit();
+            }
         });
 
         // Setup menu
@@ -195,6 +222,9 @@ class PriceCheckAIApp {
         });
         ipcMain.handle('export-logs', (event, logs) => this.exportLogs(logs));
         ipcMain.handle('get-app-info', () => this.getAppInfo());
+        ipcMain.handle('emergency-shutdown', () => this.handleAppQuit());
+        ipcMain.handle('force-cleanup', () => this.forceCleanup());
+        ipcMain.handle('repair-dependencies', () => this.repairDependencies());
     }
 
     async startServices() {
@@ -236,83 +266,57 @@ class PriceCheckAIApp {
             }
 
             try {
-                // Use the bundled backend location
                 const backendPath = path.join(__dirname, 'backend');
-                const serverFile = path.join(backendPath, 'server.ts');
                 
+                this.sendLogToRenderer('system', 'Starting backend server...');
                 this.sendLogToRenderer('system', `Backend path: ${backendPath}`);
-                this.sendLogToRenderer('system', `Starting backend server: ${serverFile}`);
                 
-                // Check if backend files exist
-                if (!fs.existsSync(serverFile)) {
-                    this.sendLogToRenderer('error', `Backend server file not found: ${serverFile}`);
-                    reject(new Error('Backend server file not found'));
-                    return;
-                }
-
-                // Check if we're in development or production mode
-                const isDev = process.env.NODE_ENV === 'development' || process.argv.includes('--dev');
-                
-                let backendCmd, backendArgs;
-                
-                if (isDev) {
-                    // Development mode - use ts-node
+                // Install dependencies first, then start the server
+                this.installDependencies(backendPath, () => {
+                    // Always use npm run dev - simple and reliable
                     const isWindows = process.platform === 'win32';
-                    backendCmd = isWindows ? 'npm.cmd' : 'npm';
-                    backendArgs = ['run', 'dev'];
-                } else {
-                    // Production mode - try to run compiled JS or fallback to ts-node
-                    const compiledServer = path.join(backendPath, 'dist', 'server.js');
-                    const isWindows = process.platform === 'win32';
+                    const backendCmd = isWindows ? 'npm.cmd' : 'npm';
+                    const backendArgs = ['run', 'dev'];
                     
-                    if (fs.existsSync(compiledServer)) {
-                        backendCmd = isWindows ? 'node.exe' : 'node';
-                        backendArgs = ['dist/server.js'];
-                    } else {
-                        // Fallback to running TypeScript directly with node and ts-node
-                        backendCmd = isWindows ? 'node.exe' : 'node';
-                        backendArgs = ['-r', 'ts-node/register', 'server.ts'];
-                    }
-                }
-                
-                this.sendLogToRenderer('system', `Starting backend with: ${backendCmd} ${backendArgs.join(' ')}`);
-                
-                this.backendProcess = spawn(backendCmd, backendArgs, {
-                    cwd: backendPath,
-                    stdio: 'pipe',
-                    shell: true,
-                    env: { ...process.env, NODE_ENV: 'production' }
+                    this.backendProcess = spawn(backendCmd, backendArgs, {
+                        cwd: backendPath,
+                        stdio: 'pipe',
+                        shell: true,
+                        env: { ...process.env }
+                    });
+
+                    this.backendProcess.stdout.on('data', (data) => {
+                        this.sendLogToRenderer('backend', data.toString());
+                    });
+
+                    this.backendProcess.stderr.on('data', (data) => {
+                        this.sendLogToRenderer('backend-error', data.toString());
+                    });
+
+                    this.backendProcess.on('close', (code) => {
+                        this.sendLogToRenderer('backend', `Backend process exited with code ${code}`);
+                        this.backendProcess = null;
+                    });
+
+                    this.backendProcess.on('error', (error) => {
+                        this.sendLogToRenderer('backend-error', `Backend process error: ${error.message}`);
+                        this.backendProcess = null;
+                        reject(error);
+                    });
+
+                    // Wait a bit to ensure it started
+                    setTimeout(() => {
+                        if (this.backendProcess) {
+                            resolve({ success: true, message: 'Backend started successfully' });
+                        } else {
+                            reject(new Error('Backend failed to start'));
+                        }
+                    }, 3000);
                 });
 
-                this.backendProcess.stdout.on('data', (data) => {
-                    this.sendLogToRenderer('backend', data.toString());
-                });
-
-                this.backendProcess.stderr.on('data', (data) => {
-                    this.sendLogToRenderer('backend-error', data.toString());
-                });
-
-                this.backendProcess.on('close', (code) => {
-                    this.backendProcess = null;
-                    this.sendLogToRenderer('backend', `Backend process exited with code ${code}`);
-                });
-
-                this.backendProcess.on('error', (error) => {
-                    this.sendLogToRenderer('backend-error', `Backend process error: ${error.message}`);
-                    this.backendProcess = null;
-                    reject(error);
-                });
-
-                // Wait a bit to ensure it started
-                setTimeout(() => {
-                    if (this.backendProcess) {
-                        resolve({ success: true, message: 'Backend started successfully' });
-                    } else {
-                        reject(new Error('Backend failed to start'));
-                    }
-                }, 3000);
             } catch (error) {
                 this.sendLogToRenderer('backend-error', `Error starting backend: ${error.message}`);
+                this.backendProcess = null;
                 reject(error);
             }
         });
@@ -321,11 +325,44 @@ class PriceCheckAIApp {
     async stopBackend() {
         return new Promise((resolve) => {
             if (this.backendProcess) {
-                this.backendProcess.kill();
-                this.backendProcess = null;
-                this.sendLogToRenderer('backend', 'Backend stopped');
+                this.sendLogToRenderer('backend', 'Stopping backend process...');
+                
+                // Handle process exit
+                const onClose = (code) => {
+                    this.sendLogToRenderer('backend', `Backend process stopped (exit code: ${code})`);
+                    this.backendProcess = null;
+                    resolve({ success: true, message: 'Backend stopped' });
+                };
+
+                this.backendProcess.once('close', onClose);
+                this.backendProcess.once('exit', onClose);
+
+                // Try graceful shutdown first
+                try {
+                    if (process.platform === 'win32') {
+                        // On Windows, send SIGTERM equivalent
+                        this.backendProcess.kill('SIGTERM');
+                    } else {
+                        this.backendProcess.kill('SIGTERM');
+                    }
+
+                    // If not closed within 5 seconds, force kill
+                    setTimeout(() => {
+                        if (this.backendProcess && !this.backendProcess.killed) {
+                            this.sendLogToRenderer('backend', 'Force killing backend process...');
+                            this.backendProcess.kill('SIGKILL');
+                        }
+                    }, 5000);
+
+                } catch (error) {
+                    this.sendLogToRenderer('backend-error', `Error stopping backend: ${error.message}`);
+                    this.backendProcess = null;
+                    resolve({ success: true, message: 'Backend stopped with error' });
+                }
+            } else {
+                this.sendLogToRenderer('backend', 'Backend was not running');
+                resolve({ success: true, message: 'Backend stopped' });
             }
-            resolve({ success: true, message: 'Backend stopped' });
         });
     }
 
@@ -427,9 +464,11 @@ class PriceCheckAIApp {
         return await this.startFrontend();
     }
 
-    installDependencies(projectPath, callback) {
+    installDependencies(projectPath, callback, retryCount = 0) {
         const packageJsonPath = path.join(projectPath, 'package.json');
         const nodeModulesPath = path.join(projectPath, 'node_modules');
+        const packageLockPath = path.join(projectPath, 'package-lock.json');
+        const maxRetries = 2;
         
         this.sendLogToRenderer('system', `Checking dependencies for: ${projectPath}`);
         
@@ -447,45 +486,156 @@ class PriceCheckAIApp {
             return;
         }
         
-        // Check if node_modules exists
-        if (!fs.existsSync(nodeModulesPath)) {
-            this.sendLogToRenderer('system', `Installing dependencies for ${path.basename(projectPath)}...`);
+        // Check if node_modules exists and is valid
+        const needsInstall = !fs.existsSync(nodeModulesPath) || this.isNodeModulesCorrupted(nodeModulesPath);
+        
+        if (needsInstall) {
+            if (retryCount > 0) {
+                this.sendLogToRenderer('system', `Retry attempt ${retryCount}/${maxRetries} for ${path.basename(projectPath)}...`);
+            } else {
+                this.sendLogToRenderer('system', `Installing dependencies for ${path.basename(projectPath)}...`);
+            }
+            
+            // Clean up corrupted installation
+            if (fs.existsSync(nodeModulesPath)) {
+                this.sendLogToRenderer('system', 'Cleaning corrupted node_modules...');
+                try {
+                    fs.rmSync(nodeModulesPath, { recursive: true, force: true });
+                } catch (error) {
+                    this.sendLogToRenderer('error', `Failed to clean node_modules: ${error.message}`);
+                }
+            }
+            
+            // Remove package-lock.json to force fresh install
+            if (fs.existsSync(packageLockPath)) {
+                try {
+                    fs.unlinkSync(packageLockPath);
+                    this.sendLogToRenderer('system', 'Removed package-lock.json for fresh install');
+                } catch (error) {
+                    this.sendLogToRenderer('error', `Failed to remove package-lock.json: ${error.message}`);
+                }
+            }
+            
             this.sendLogToRenderer('system', `Working directory: ${projectPath}`);
             
             const isWindows = process.platform === 'win32';
             const npmCmd = isWindows ? 'npm.cmd' : 'npm';
             
-            const installProcess = spawn(npmCmd, ['install'], {
+            // Use npm ci for more reliable installs, fallback to npm install
+            const useCI = false; // Disabled since we removed package-lock.json
+            const installArgs = useCI ? ['ci'] : ['install', '--no-package-lock', '--prefer-offline'];
+            
+            const installProcess = spawn(npmCmd, installArgs, {
                 cwd: projectPath,
                 stdio: 'pipe',
-                shell: true
+                shell: true,
+                env: {
+                    ...process.env,
+                    NPM_CONFIG_LOGLEVEL: 'error' // Reduce npm verbosity
+                }
             });
+
+            let hasErrors = false;
+            let errorOutput = '';
 
             installProcess.stdout.on('data', (data) => {
                 this.sendLogToRenderer('install', data.toString());
             });
 
             installProcess.stderr.on('data', (data) => {
-                this.sendLogToRenderer('install-error', data.toString());
+                const errorMsg = data.toString();
+                errorOutput += errorMsg;
+                
+                // Check for critical errors vs warnings
+                if (errorMsg.includes('EACCES') || errorMsg.includes('EPERM') || errorMsg.includes('MODULE_NOT_FOUND')) {
+                    hasErrors = true;
+                }
+                
+                this.sendLogToRenderer('install-error', errorMsg);
             });
 
             installProcess.on('close', (code) => {
-                if (code === 0) {
-                    this.sendLogToRenderer('system', `Dependencies installed successfully for ${path.basename(projectPath)}`);
-                    callback();
+                if (code === 0 && !hasErrors) {
+                    // Verify installation is actually working
+                    if (this.verifyInstallation(projectPath)) {
+                        this.sendLogToRenderer('system', `Dependencies installed successfully for ${path.basename(projectPath)}`);
+                        callback();
+                    } else {
+                        this.sendLogToRenderer('error', 'Installation verification failed');
+                        this.handleInstallFailure(projectPath, callback, retryCount, maxRetries, 'Verification failed');
+                    }
                 } else {
-                    this.sendLogToRenderer('error', `Failed to install dependencies for ${path.basename(projectPath)} (exit code: ${code})`);
-                    callback(); // Continue anyway
+                    this.sendLogToRenderer('error', `Install failed for ${path.basename(projectPath)} (exit code: ${code})`);
+                    this.handleInstallFailure(projectPath, callback, retryCount, maxRetries, errorOutput);
                 }
             });
 
             installProcess.on('error', (error) => {
                 this.sendLogToRenderer('error', `Error spawning npm install: ${error.message}`);
-                callback(); // Continue anyway
+                this.handleInstallFailure(projectPath, callback, retryCount, maxRetries, error.message);
             });
         } else {
             this.sendLogToRenderer('system', `Dependencies already installed for ${path.basename(projectPath)}`);
             callback();
+        }
+    }
+
+    isNodeModulesCorrupted(nodeModulesPath) {
+        try {
+            // Check if essential packages exist
+            const essentialPackages = ['express', 'typescript', 'ts-node'];
+            for (const pkg of essentialPackages) {
+                const pkgPath = path.join(nodeModulesPath, pkg);
+                if (!fs.existsSync(pkgPath)) {
+                    this.sendLogToRenderer('system', `Missing essential package: ${pkg}`);
+                    return true;
+                }
+            }
+            return false;
+        } catch (error) {
+            this.sendLogToRenderer('error', `Error checking node_modules: ${error.message}`);
+            return true;
+        }
+    }
+
+    verifyInstallation(projectPath) {
+        try {
+            const nodeModulesPath = path.join(projectPath, 'node_modules');
+            
+            // Check if node_modules exists and has content
+            if (!fs.existsSync(nodeModulesPath)) {
+                return false;
+            }
+            
+            // Check for some essential packages
+            const essentialPackages = ['express', 'typescript', 'ts-node'];
+            for (const pkg of essentialPackages) {
+                const pkgPath = path.join(nodeModulesPath, pkg, 'package.json');
+                if (!fs.existsSync(pkgPath)) {
+                    this.sendLogToRenderer('system', `Verification failed: missing ${pkg}`);
+                    return false;
+                }
+            }
+            
+            this.sendLogToRenderer('system', 'Installation verification passed');
+            return true;
+        } catch (error) {
+            this.sendLogToRenderer('error', `Verification error: ${error.message}`);
+            return false;
+        }
+    }
+
+    handleInstallFailure(projectPath, callback, retryCount, maxRetries, errorMsg) {
+        if (retryCount < maxRetries) {
+            this.sendLogToRenderer('system', `Installation failed, retrying in 3 seconds...`);
+            setTimeout(() => {
+                this.installDependencies(projectPath, callback, retryCount + 1);
+            }, 3000);
+        } else {
+            this.sendLogToRenderer('error', `Failed to install dependencies after ${maxRetries} attempts`);
+            this.sendLogToRenderer('error', `Last error: ${errorMsg.slice(0, 200)}...`);
+            this.sendLogToRenderer('system', 'Continuing without dependencies - backend may not work properly');
+            callback(); // Continue anyway
         }
     }
 
@@ -568,29 +718,148 @@ class PriceCheckAIApp {
 
     async handleAppQuit() {
         this.isQuitting = true;
+        this.sendLogToRenderer('system', 'Application closing, stopping all services...');
         
-        // Stop all services
+        // Graceful shutdown with timeout
+        const shutdownPromise = this.gracefulShutdown();
+        const timeoutPromise = new Promise((resolve) => {
+            setTimeout(() => {
+                this.sendLogToRenderer('system', 'Shutdown timeout reached, forcing close...');
+                resolve();
+            }, 10000); // 10 second timeout
+        });
+        
         try {
-            await this.stopServices();
+            await Promise.race([shutdownPromise, timeoutPromise]);
         } catch (error) {
-            console.error('Error stopping services:', error);
+            console.error('Error during shutdown:', error);
+            this.sendLogToRenderer('error', `Shutdown error: ${error.message}`);
         }
+        
+        // Force cleanup if processes are still running
+        this.forceCleanup();
         
         // Close all windows
         BrowserWindow.getAllWindows().forEach(window => {
-            window.close();
+            if (!window.isDestroyed()) {
+                window.destroy();
+            }
         });
         
-        app.quit();
+        // Final quit
+        setTimeout(() => {
+            app.quit();
+        }, 500);
+    }
+
+    async gracefulShutdown() {
+        try {
+            this.sendLogToRenderer('system', 'Stopping services gracefully...');
+            await this.stopServices();
+            this.sendLogToRenderer('system', 'All services stopped successfully');
+        } catch (error) {
+            this.sendLogToRenderer('error', `Error stopping services: ${error.message}`);
+            throw error;
+        }
+    }
+
+    forceCleanup() {
+        this.sendLogToRenderer('system', 'Performing force cleanup...');
+        
+        // Kill backend process
+        if (this.backendProcess) {
+            try {
+                if (process.platform === 'win32') {
+                    // On Windows, try to kill the process tree
+                    const { spawn } = require('child_process');
+                    spawn('taskkill', ['/pid', this.backendProcess.pid, '/T', '/F'], { 
+                        stdio: 'ignore' 
+                    });
+                } else {
+                    this.backendProcess.kill('SIGTERM');
+                    setTimeout(() => {
+                        if (this.backendProcess && !this.backendProcess.killed) {
+                            this.backendProcess.kill('SIGKILL');
+                        }
+                    }, 3000);
+                }
+                this.backendProcess = null;
+                this.sendLogToRenderer('system', 'Backend process terminated');
+            } catch (error) {
+                this.sendLogToRenderer('error', `Error killing backend process: ${error.message}`);
+            }
+        }
+        
+        // Stop frontend server
+        if (this.frontendProcess) {
+            try {
+                if (typeof this.frontendProcess.close === 'function') {
+                    // Express server
+                    this.frontendProcess.close();
+                } else {
+                    // Process
+                    this.frontendProcess.kill();
+                }
+                this.frontendProcess = null;
+                this.sendLogToRenderer('system', 'Frontend server stopped');
+            } catch (error) {
+                this.sendLogToRenderer('error', `Error stopping frontend: ${error.message}`);
+            }
+        }
+    }
+
+    async repairDependencies() {
+        return new Promise((resolve) => {
+            this.sendLogToRenderer('system', '🔧 REPAIR: Starting backend dependency repair...');
+            
+            // Stop backend first if running
+            if (this.backendProcess) {
+                this.sendLogToRenderer('system', 'Stopping backend for repair...');
+                this.stopBackend().then(() => {
+                    this.performRepair(resolve);
+                });
+            } else {
+                this.performRepair(resolve);
+            }
+        });
+    }
+
+    performRepair(resolve) {
+        const backendPath = path.join(__dirname, 'backend');
+        const nodeModulesPath = path.join(backendPath, 'node_modules');
+        const packageLockPath = path.join(backendPath, 'package-lock.json');
+        
+        this.sendLogToRenderer('system', 'Cleaning corrupted dependencies...');
+        
+        try {
+            // Remove node_modules
+            if (fs.existsSync(nodeModulesPath)) {
+                fs.rmSync(nodeModulesPath, { recursive: true, force: true });
+                this.sendLogToRenderer('system', 'Removed corrupted node_modules');
+            }
+            
+            // Remove package-lock.json
+            if (fs.existsSync(packageLockPath)) {
+                fs.unlinkSync(packageLockPath);
+                this.sendLogToRenderer('system', 'Removed package-lock.json');
+            }
+            
+            // Force reinstall dependencies
+            this.sendLogToRenderer('system', 'Force reinstalling dependencies...');
+            this.installDependencies(backendPath, () => {
+                this.sendLogToRenderer('system', '✅ Backend repair completed');
+                resolve({ success: true, message: 'Backend dependencies repaired successfully' });
+            });
+            
+        } catch (error) {
+            this.sendLogToRenderer('error', `Repair failed: ${error.message}`);
+            resolve({ success: false, message: error.message });
+        }
     }
 
     cleanup() {
-        if (this.backendProcess) {
-            this.backendProcess.kill();
-        }
-        if (this.frontendProcess) {
-            this.frontendProcess.kill();
-        }
+        // Legacy cleanup method - now calls forceCleanup for compatibility
+        this.forceCleanup();
     }
 }
 

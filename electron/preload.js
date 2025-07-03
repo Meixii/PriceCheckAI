@@ -23,6 +23,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     exportLogs: (logs) => ipcRenderer.invoke('export-logs', logs),
     getAppInfo: () => ipcRenderer.invoke('get-app-info'),
     
+    // Emergency methods
+    emergencyShutdown: () => ipcRenderer.invoke('emergency-shutdown'),
+    forceCleanup: () => ipcRenderer.invoke('force-cleanup'),
+    repairDependencies: () => ipcRenderer.invoke('repair-dependencies'),
+    
     // Log listener
     onLogMessage: (callback) => {
         ipcRenderer.on('log-message', (event, data) => callback(data));
